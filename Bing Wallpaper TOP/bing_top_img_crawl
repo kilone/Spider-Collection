@@ -1,0 +1,68 @@
+import requests
+from lxml import etree
+import os
+import re
+import win32api, win32gui, win32con
+import time
+import random
+
+
+def get_pic_url():
+    res = requests.get(url, headers=headers)
+    # print(res.status_code)
+    html = etree.HTML(res.content)
+    # print(res.content)
+    pic_links = html.xpath('/html/body/div[@class="container"]/div[@class="item"]/div[@class="card progressive"]/\
+    img/@data-progressive')
+    for i in range(len(pic_links)):
+        pic_links[i] = pic_links[i].replace("640x480", "1920x1080")
+    # print(pic_links)
+    return pic_links
+
+
+def save_pic(pic_links):
+    pics = {}
+    for link in pic_links:
+        pic_name = re.findall('http://h1.ioliu.cn/bing/(.*?)_', link)[0]
+        # print(pic_name)
+        pic = requests.get(link, headers=headers).content
+        pics[pic_name] = pic
+    # print(pics)
+    if os.path.exists('D:\\Bing Wallpaper Top'):
+        pass
+    else:
+        os.mkdir('D:\\Bing Wallpaper Top')
+    for pic_name, pic in pics.items():
+        with open(f"D:\\Bing Wallpaper Top\\{pic_name}.bmp", 'wb') as f:
+            f.write(pic)
+
+
+def set_bg():
+    while True:
+        path = 'D:\\Bing Wallpaper Top\\'
+        files = os.listdir(path)
+        pic_path = path + random.choice(files)
+        regkey = win32api.RegOpenKeyEx(win32con.HKEY_CURRENT_USER, "Control Panel\\Desktop", 0, win32con.KEY_SET_VALUE)
+        win32api.RegSetValueEx(regkey, "WallpaperStyle", 0, win32con.REG_SZ, "2")
+        win32api.RegSetValueEx(regkey, "TileWallpaper", 0, win32con.REG_SZ, "0")
+        win32gui.SystemParametersInfo(win32con.SPI_SETDESKWALLPAPER, pic_path, 1+2)
+        time.sleep(15*60)
+        print("壁纸已更换")
+
+
+def main():
+    pic_links = get_pic_url()
+    save_pic(pic_links)
+
+
+if __name__ == '__main__':
+    num = int(input("请输入要下载的页面数："))
+    for i in range(1, num+1):
+        url = f'https://bing.ioliu.cn/ranking?p={i}'
+        print(url)
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)\
+        Chrome/83.0.4103.106 Safari/537.36 Edg/83.0.478.54"}
+        main()
+        print(f"第{i}页下载完成")
+        time.sleep(10)
+    set_bg()

@@ -1,0 +1,56 @@
+import requests
+from lxml import etree
+import os
+import re
+import win32api, win32gui, win32con
+
+
+url = 'https://cn.bing.com/'
+headers = {"User-Agent" : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)\
+Chrome/83.0.4103.106 Safari/537.36 Edg/83.0.478.54"}
+
+
+def get_pic_url():
+    res = requests.get(url, headers=headers)
+    html = etree.HTML(res.content)
+    # print(res.content)
+    pic_link_tail = html.xpath('/html/head/link[@id="bgLink"]/@href')
+    print(pic_link_tail)
+    pic_link = url + pic_link_tail[0]
+    print(pic_link)
+    return pic_link, pic_link_tail
+
+
+def download_pic(pic_link, pic_link_tail):
+    pic_name = re.findall(r'th\?id=(.*?)\.jpg&rf', pic_link_tail[0])[0]
+    pic = requests.get(pic_link, headers=headers).content
+    return pic, pic_name
+
+
+def save_pic(pic, pic_name):
+    if os.path.exists('D:\\Bing Wallpaper'):
+        pass
+    else:
+        os.mkdir('D:\\Bing Wallpaper')
+    with open(f"D:\\Bing Wallpaper\\{pic_name}.bmp", 'wb') as f:
+        f.write(pic)
+
+
+def set_bg(pic_name):
+    pic_path = f"D:\\Bing Wallpaper\\{pic_name}.bmp"
+    print(pic_path)
+    regKey = win32api.RegOpenKeyEx(win32con.HKEY_CURRENT_USER, "Control Panel\\Desktop", 0, win32con.KEY_SET_VALUE)
+    win32api.RegSetValueEx(regKey, "WallpaperStyle", 0, win32con.REG_SZ, "2")
+    win32api.RegSetValueEx(regKey, "TileWallpaper", 0, win32con.REG_SZ, "0")
+    win32gui.SystemParametersInfo(win32con.SPI_SETDESKWALLPAPER, pic_path, 1+2)
+
+
+def main():
+    pic_link, pic_link_tail = get_pic_url()
+    pic, pic_name = download_pic(pic_link, pic_link_tail)
+    save_pic(pic, pic_name)
+    set_bg(pic_name)
+
+
+if __name__ == '__main__':
+    main()
